@@ -1,0 +1,21 @@
+# springboot实现netty心跳连接
+- Netty是由JBOSS提供的一个java开源框架，现为 Github上的独立项目。Netty提供异步的、事件驱动的网络应用程序框架和工具，用以快速开发高性能、高可靠性的网络服务器和客户端程序。
+- netty与springboot联动，需要两个端口
+  - 让sprigboot启动器implements EmbeddedServletContainerCustomizer 重写@Override方法 customize() configurableEmbeddedServletContainer.setPort();
+- NettyClient方法的调用关系 NettyClient->NettyClientFilter->NettyHandler 
+  - Netty创建全部都是实现自AbstractBootstrap-> 客户端的是Bootstrap，服务端的则是ServerBootstrap。
+  - 通过nio方式来接收连接和处理连接 new NioEventLoopGroup() 
+  - b,group(group) 设置 ServerBootstrap 要用的 EventLoopGroup。这个 EventLoopGroup 将用于 ServerChannel 和被接受的子 Channel 的 I/O 处理
+  - b.channel(NioSocketChannel.class) 设置将要被实例化的 ServerChannel 类
+  - b.handler(nettyClientFilter)绑定过滤器，设置被添加到ServerChannel的ChannelPipeline中的ChannelHandler。
+- 在NetttyCilentFilter中设置
+  - readerIdleTime：为读超时时间（即测试端一定时间内未接受到被测试端消息）
+  - writerIdleTime：为写超时时间（即测试端一定时间内向被测试端发送消息） 设置为4s
+  - allIdleTime：所有类型的超时时间
+  - 设置编码解码器和业务逻辑处理器 
+- NettyClientHandler中的设置
+  - channelActive()->开始链接 channelInactive()->链接中断 channelRead()->读取server端信息
+  - 在的 handler 中重写 userEventTriggered 方法，当发生空闲事件（读或者写），就会触发这个方法，并传入具体事件
+  - 添加了idleStateHandler用于监听链接idle，如果连接到达idle时间，这个handler会触发idleEvent，之后通过重写userEventTriggered方法，完成idle事件的处理。
+  - 通过对于是否为idle子类的判断 执行流的写入
+- 在服务器端，通过channelFuture f=b.bind(port).sync() 执行绑定端口，启动服务器端
