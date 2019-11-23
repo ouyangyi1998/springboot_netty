@@ -25,4 +25,4 @@
   - 调用NIO线程组的shutdownGracefully进行优雅退出，它会释放跟shutdownGracefully相关联的资源。
   - 同样的在server端filter也设置编码解码器，设置idleStateHandler用于监听链接idle，readerIdleTime(读取数据延时)为5s
   - 在ServerHandler重写userEventTriggered方法，如果两次心跳没有接收到消息，就停止管道
-   -在channelRead方法捕获client发来的消息
+  -在channelRead方法捕获client发来的消息
