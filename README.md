@@ -1,6 +1,6 @@
 # springboot实现netty心跳连接
 - Netty是由JBOSS提供的一个java开源框架，现为 Github上的独立项目。Netty提供异步的、事件驱动的网络应用程序框架和工具，用以快速开发高性能、高可靠性的网络服务器和客户端程序。
-- netty与springboot联动，需要两个端口
+- netty与springboot联动，需要两个端口，比如说8080与8081
   - 让sprigboot启动器implements EmbeddedServletContainerCustomizer 重写@Override方法 customize() configurableEmbeddedServletContainer.setPort();
 - NettyClient方法的调用关系 NettyClient->NettyClientFilter->NettyHandler 
   - Netty创建全部都是实现自AbstractBootstrap-> 客户端的是Bootstrap，服务端的则是ServerBootstrap。
@@ -18,4 +18,11 @@
   - 在的 handler 中重写 userEventTriggered 方法，当发生空闲事件（读或者写），就会触发这个方法，并传入具体事件
   - 添加了idleStateHandler用于监听链接idle，如果连接到达idle时间，这个handler会触发idleEvent，之后通过重写userEventTriggered方法，完成idle事件的处理。
   - 通过对于是否为idle子类的判断 执行流的写入
-- 在服务器端，通过channelFuture f=b.bind(port).sync() 执行绑定端口，启动服务器端
+- 在服务器端，创建ServerBootstrap对象，它是Netty用于启动NIO服务端的辅助启动类，目的是降低服务端的开发复杂度。
+  - 服务端启动辅助类配置完成之后，调用它的bind方法绑定监听端口。随后，调用它的同步阻塞方法sync等待绑定操作完成。
+  - 完成之后Netty会返回一个ChannelFuture，它的功能类似于JDK的java.util.concurrent.Future，主要用于异步操作的通知回调。ChannelFuture f = b.bind(port).sync();
+  - 使用f.channel().closeFuture().sync()方法进行阻塞,等待服务端链路关闭之后main函数才退出。
+  - 调用NIO线程组的shutdownGracefully进行优雅退出，它会释放跟shutdownGracefully相关联的资源。
+  - 同样的在server端filter也设置编码解码器，设置idleStateHandler用于监听链接idle，readerIdleTime(读取数据延时)为5s
+  - 在ServerHandler重写userEventTriggered方法，如果两次心跳没有接收到消息，就停止管道
+   -在channelRead方法捕获client发来的消息
